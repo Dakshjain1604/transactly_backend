@@ -5,10 +5,10 @@ const {authMiddleware} =require("../middleswares/auth");
 
 router.post('/signup',signupUser)
 
-router.post("/login",loginUser);
+router.post("/signin",loginUser);
 
 router.put('/update',authMiddleware,updateUser);
 
-// router.get('/find',authMiddleware,findUser)
+router.get('/find',findUser)
 
 module.exports=router;

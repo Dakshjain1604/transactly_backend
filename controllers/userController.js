@@ -1,4 +1,4 @@
-const { user,Account } = require("../db");
+const { user, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { JWT_SECRET } = require("../config");
@@ -32,14 +32,15 @@ exports.signupUser = async (req, res) => {
     lastname: req.body.lastname,
   });
 
-  const Userbalance=await Account.create({
-    userId:createdUser._id,
+  const Userbalance = await Account.create({
+    userId: createdUser._id,
     balance: 1 + Math.random() * 10000
-})
-
+  })
+  console.log(createdUser);
   res.status(200).json({
     message: "User created successfully",
   });
+
 };
 
 
@@ -90,11 +91,11 @@ exports.updateUser = async (req, res) => {
   const { success } = updateBody.safeParse(req.body);
   console.log(success);
   if (!success) {
-      return res.status(411).json({ 
-          message: "invalid input"
-      });
+    return res.status(411).json({
+      message: "invalid input"
+    });
   }
-  try{
+  try {
     const updateData = { ...req.body };
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
@@ -104,34 +105,34 @@ exports.updateUser = async (req, res) => {
       message: "Updated successfully"
     });
   } catch (err) {
-      res.status(500).json({
-          message: "Server error during update",
-          error: err.message
-      });
+    res.status(500).json({
+      message: "Server error during update",
+      error: err.message
+    });
   }
 };
 
-
-// exports.findUser=async(req,res)=>{
-//   const filter = req.query.filter || "";
-//   const users = await user.find({
-//       $or: [{
-//           firstName: {
-//               "$regex": filter,"$options": "i"
-//           }
-//       }, {
-//           lastName: {
-//               "$regex": filter,"$options": "i"
-//           }
-//       }]
-//   })
-//   res.json({
-//       user: users.map(user => ({
-//           username: user.username,
-//           firstName: user.firstName,
-//           lastName: user.lastName,
-//           _id: user._id
-//       }))
-//   })
-// }
+exports.findUser = async (req, res) => {
+  const filter = req.query.filter || "";
+  console.log(filter)
+  const users = await user.find({
+    $or: [{
+      firstname: {
+        "$regex": filter,$options: "i" 
+      }
+    }, {
+      lastname: {
+        "$regex": filter,$options: "i" 
+      }
+    }]
+  })
+  res.json({
+    users: users.map(user => ({
+      username: user.username,
+      firstName: user.firstname,
+      lastName: user.lastname,
+      _id: user._id
+  }))
+  })
+}
 
