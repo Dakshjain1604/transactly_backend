@@ -59,5 +59,5 @@ exports.sendMoney=async(req,res)=>{
     res.json({
         message:"transfer sucessful"
     });
-
+    console.log("money sent");
 }
