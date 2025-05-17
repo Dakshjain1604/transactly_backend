@@ -83,15 +83,15 @@ exports.getHistory=async(req,res)=>{
     const recieved=await history.find({
         recieverId:userId
     })
-        res.json({
-            Sent_Money:sent.map(history => ({
+     return  res.json({
+            SentMoney:sent.map(history => ({
                 senderId:history.senderId,
                 recieverId:history.recieverId,
                 reciever:history.firstname,
                 amount:history.amount,
                 timeStamp:history.timeStamp
             })),
-            Recieved_Money:recieved.map(history=>({
+            RecievedMoney:recieved.map(history=>({
                 senderId:history.senderId,
                 sender:history.reciever,
                 receiverId:history.recieverId,
