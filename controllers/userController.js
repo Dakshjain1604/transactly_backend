@@ -36,7 +36,7 @@ exports.signupUser = async (req, res) => {
     userId: createdUser._id,
     balance: 1 + Math.random() * 10000
   })
-  console.log(createdUser);
+
   res.status(200).json({
     message: "User created successfully",
   });
@@ -89,7 +89,6 @@ const updateBody = zod.object({
 
 exports.updateUser = async (req, res) => {
   const { success } = updateBody.safeParse(req.body);
-  console.log(success);
   if (!success) {
     return res.status(411).json({
       message: "invalid input"

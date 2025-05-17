@@ -1,6 +1,7 @@
 const mongoose =require("mongoose");
 const { optional, number } = require("zod");
 const { MONGODB_URL } = require("./config");
+const { timeStamp } = require("console");
 const db=mongoose.connect(MONGODB_URL);
 
 const userSchema=new mongoose.Schema({
@@ -15,10 +16,17 @@ const Accountschema=new mongoose.Schema({
     balance:{type:Number,required:true}
 })
 
+const PaymentHistory=new mongoose.Schema({
+    senderId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
+    recieverId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
+    amount:{type:Number,required:true},
+    timeStamp:{type:Date},
+    transactionType:{String}
+})
 
 const Account=mongoose.model("Account",Accountschema);
 const user=mongoose.model("User",userSchema);
-
+const history=mongoose.model("history",PaymentHistory);
 module.exports={
-    user,Account,
+    user,Account,history
 }
