@@ -55,11 +55,14 @@ exports.sendMoney=async(req,res)=>{
         balance:amount,
     }
     }).session(session);
-
+    const senderUser = await user.findById(req.userId).session(session);
+    const recieverUser = await user.findById(to).session(session);
     const his=await history.create([{
         senderId:req.userId,
         recieverId:to,
         amount:amount,
+        sender:senderUser.firstname,
+        reciever:recieverUser.firstname,
         timeStamp:new Date()
     }], { session });
 
@@ -72,33 +75,36 @@ exports.sendMoney=async(req,res)=>{
 
 
 exports.getHistory=async(req,res)=>{
-    const userId=req.userId;
+    try{
+        const userId=req.userId;
     const sent=await history.find({
         senderId:userId
     });
     const recieved=await history.find({
         recieverId:userId
     })
-
-    if(sent){
         res.json({
             Sent_Money:sent.map(history => ({
                 senderId:history.senderId,
                 recieverId:history.recieverId,
+                reciever:history.firstname,
                 amount:history.amount,
                 timeStamp:history.timeStamp
             })),
             Recieved_Money:recieved.map(history=>({
                 senderId:history.senderId,
+                sender:history.reciever,
                 receiverId:history.recieverId,
                 amount:history.amount,
                 timeStamp:history.timeStamp
             }))
         })
     }
-    else{
-        res.status(400).json({
-            message:"history not found or user is invalid"
+    catch(error){
+        console.log(error);
+        res.status(500).json({
+            message:"Error Fetching History",
+            error:error.message
         })
     }
 }

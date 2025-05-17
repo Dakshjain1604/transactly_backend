@@ -18,7 +18,9 @@ const Accountschema=new mongoose.Schema({
 
 const PaymentHistory=new mongoose.Schema({
     senderId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
+    sender:{type:String,ref:'user'},
     recieverId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
+    reciever:{type:String,ref:'user'},
     amount:{type:Number,required:true},
     timeStamp:{type:Date},
     transactionType:{String}
