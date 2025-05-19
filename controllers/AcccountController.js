@@ -19,9 +19,6 @@ exports.getBalance=async(req,res)=>{
     }
 }
 
-
-
-
 exports.sendMoney=async(req,res)=>{
     const session =await mongoose.startSession();
     session.startTransaction();
@@ -65,14 +62,11 @@ exports.sendMoney=async(req,res)=>{
         reciever:recieverUser.firstname,
         timeStamp:new Date()
     }], { session });
-
-    console.log(his);
     await session.commitTransaction();
     res.json({
         message:"transfer sucessful"
     });
 }
-
 
 exports.getHistory=async(req,res)=>{
     try{
@@ -83,11 +77,11 @@ exports.getHistory=async(req,res)=>{
     const recieved=await history.find({
         recieverId:userId
     })
-     return  res.json({
+    const his= res.json({
             SentMoney:sent.map(history => ({
                 senderId:history.senderId,
                 recieverId:history.recieverId,
-                reciever:history.firstname,
+                reciever:history.sender,
                 amount:history.amount,
                 timeStamp:history.timeStamp
             })),
