@@ -113,7 +113,6 @@ exports.updateUser = async (req, res) => {
 
 exports.findUser = async (req, res) => {
   const filter = req.query.filter || "";
-  console.log(filter)
   const users = await user.find({
     $or: [{
       firstname: {
