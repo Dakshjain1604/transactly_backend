@@ -5,7 +5,7 @@ const app=express();
 app.use(express.json());
 const cors=require('cors');
 app.use(cors());
-
+const port = process.env.PORT || 4000 
 // Swagger UI setup
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
@@ -21,4 +21,4 @@ app.get("/",(req,res)=>{
 app.use('/user',userRoutes);
 app.use('/account',AccountRoutes)
 
-app.listen(3000);
+app.listen(port);
