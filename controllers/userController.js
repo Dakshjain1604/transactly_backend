@@ -1,7 +1,8 @@
 const { user, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { JWT_SECRET } = require("../config");
+require('dotenv').config();
+const JWT_SECRET= process.env.JWT_SECRET;
 const zod = require("zod");
 const signupBody = zod.object({
   username: zod.string().email(),

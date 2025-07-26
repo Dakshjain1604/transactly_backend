@@ -85,13 +85,13 @@ exports.getHistory = async (req, res) => {
         SentMoney: sent.map((h) => ({
           senderId: h.senderId,
           recieverId: h.recieverId,
-          reciever: h.reciever, // ✅ stored directly at send time
+          reciever: h.reciever, 
           amount: h.amount,
           timeStamp: h.timeStamp,
         })),
         RecievedMoney: recieved.map((h) => ({
           senderId: h.senderId,
-          sender: h.sender, // ✅ stored directly at send time
+          sender: h.sender, 
           receiverId: h.recieverId,
           amount: h.amount,
           timeStamp: h.timeStamp,

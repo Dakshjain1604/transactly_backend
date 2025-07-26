@@ -1,8 +1,9 @@
 const mongoose =require("mongoose");
-const { optional, number } = require("zod");
-const { MONGODB_URL } = require("./config");
+
+require('dotenv').config();
+const  MONGODB_URL=process.env.MONGODB_URL
 const { timeStamp } = require("console");
-const db=mongoose.connect("mongodb+srv://Daksh161616:Daksh161616@cluster0.lo6gz.mongodb.net/");
+const db=mongoose.connect(MONGODB_URL);
 
 const userSchema=new mongoose.Schema({
     username:{type:String,unique:true},
