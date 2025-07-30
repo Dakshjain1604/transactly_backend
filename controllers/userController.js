@@ -4,6 +4,9 @@ const bcrypt = require("bcrypt");
 require('dotenv').config();
 const JWT_SECRET= process.env.JWT_SECRET;
 const zod = require("zod");
+const otpGenerator = require('otp-generator');
+const nodemailer = require('nodemailer');
+
 const signupBody = zod.object({
   username: zod.string().email(),
   firstname: zod.string(),
@@ -139,3 +142,20 @@ exports.findUser = async (req, res) => {
   })
 }
 
+exports.otpGen=async (req,res)=>{
+  const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
+  const user=user.findOne({
+   username: req.body.username
+  })
+  
+  const transporter = nodemailer.createTransport({ /* your email service config */ });
+  await transporter.sendMail({
+      from: 'dakshjain080@gmail.com',
+      to: `${user.username}`,
+      subject: 'Your OTP',
+      text: `Your OTP is: ${otp}`
+  });
+
+  
+
+}
