@@ -214,35 +214,37 @@ exports.otpGen = async (req, res) => {
 
 
 
-exports.verifyOtp=async (req,res)=>{
-  const userId=req.userId;
-  const otp=req.body.otp;
-  const verify=await Otp.findOne({
-    userId:userId
-  });
-  console.log(verify)
-  try{
-    if(verify.otp_code===otp){
-      if(verify.expiresAt>Date.now()){
-        res.status(400).status({
-          message:"code expired , request new token"
-        });
-      }
-      res.json({
-        message:"opt verified sucessfully !"
-      })
-    }
-    else{
-      res.json({
-        message:"otp verification failed , check otp !"
-      })
-    }
-  }catch (exception) {
-    console.error("OTP Error:", exception);
-    res.status(500).json({
-      message: "Error verifying OTP",
-      error: exception.message
-    });
-  }
+exports.verifyOtp= async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const userId = req.userId; // from token
 
-}
+    const CurrentOtp = await Otp.findById({
+      userId:userId
+    });
+
+    if (!CurrentOtp.otp_code ) {
+      return res.status(400).json({ message: "OTP not sent" });
+    }
+
+    await CurrentOtp.save()
+
+    if (now > CurrentOtp.expiresAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (otp !== CurrentOtp.otp_code) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Optional: Clear OTP after use
+    CurrentOtp.otp_code = undefined;
+    await Otp.save();
+
+    return res.status(200).json({ message: "OTP verified successfully" });
+
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
