@@ -1,4 +1,4 @@
-const { user, Account } = require("../db");
+const { user, Account,Otp } = require("../db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 require('dotenv').config();
@@ -142,20 +142,107 @@ exports.findUser = async (req, res) => {
   })
 }
 
-exports.otpGen=async (req,res)=>{
+
+exports.otpGen = async (req, res) => {
   const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
-  const user=user.findOne({
-   username: req.body.username
-  })
-  
-  const transporter = nodemailer.createTransport({ /* your email service config */ });
-  await transporter.sendMail({
+  const userId = req.userId;
+
+  console.log("User ID:", userId);
+
+  try {
+    const userr = await user.findById(userId);
+
+    if (!userr) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!userr.username) {
+      return res.status(400).json({ message: "User email not found" });
+    }
+
+    const transporter = nodemailer.createTransport({ 
+      service: 'gmail',
+      auth: {
+        user: process.env.transporter_email,
+        pass: process.env.transporter_pass
+      }
+    });
+
+    await transporter.sendMail({
       from: 'dakshjain080@gmail.com',
-      to: `${user.username}`,
+      to: userr.username,
       subject: 'Your OTP',
       text: `Your OTP is: ${otp}`
-  });
+    });
+    const existingOtp=await Otp.findOne({
+        userId:userId
+    })
+    if(existingOtp===null){
+      const createdOtp= await Otp.create({
+        userId:req.userId,
+        otp_code:otp,
+        expiresAt:Date.now()+ 5 * 60 * 1000
+      })
+      console.log(createdOtp)
+      return res.json({
+        message: "OTP sent successfully",
+        createdOtp
+      });
+    }else if(existingOtp!=null){
+      const UpdatedOtp=await Otp.updateOne({
+        userId:req.userId,
+        otp_code:otp,
+        expiresAt:Date.now()+ 5 * 60 * 1000
+      })
+      console.log(UpdatedOtp)
+      return res.json({
+        message: "OTP sent successfully",
+        UpdatedOtp
+      });
 
-  
+    }
+    
+
+  } catch (exception) {
+    console.error("OTP Error:", exception);
+    res.status(500).json({
+      message: "Error sending OTP",
+      error: exception.message
+    });
+  }
+};
+
+
+
+exports.verifyOtp=async (req,res)=>{
+  const userId=req.userId;
+  const otp=req.body.otp;
+  const verify=await Otp.findOne({
+    userId:userId
+  });
+  console.log(verify)
+  try{
+    if(verify.otp_code===otp){
+      if(verify.expiresAt>Date.now()){
+        res.status(400).status({
+          message:"code expired , request new token"
+        });
+      }
+      res.json({
+        message:"opt verified sucessfully !"
+      })
+    }
+    else{
+      res.json({
+        message:"otp verification failed , check otp !"
+      })
+    }
+  }catch (exception) {
+    console.error("OTP Error:", exception);
+    res.status(500).json({
+      message: "Error verifying OTP",
+      error: exception.message
+    });
+  }
 
 }

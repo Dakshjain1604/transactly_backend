@@ -27,9 +27,16 @@ const PaymentHistory=new mongoose.Schema({
     transactionType:{String}
 })
 
+const OtpSchema=new mongoose.Schema({
+    userId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
+    otp_code:{type:String,required:true},
+    expiresAt:{type:Date},
+})
+
 const Account=mongoose.model("Account",Accountschema);
 const user=mongoose.model("User",userSchema);
 const history=mongoose.model("history",PaymentHistory);
+const Otp=mongoose.model("Otp",OtpSchema);
 module.exports={
-    user,Account,history
+    user,Account,history,Otp
 }

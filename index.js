@@ -5,7 +5,6 @@ const cors=require('cors');
 require('dotenv').config();
 app.use(cors());
 
-
 //importing the routes
 const userRoutes=require("./routes/userRoutes");
 const AccountRoutes=require("./routes/AccountRoutes");
@@ -15,9 +14,7 @@ app.get("/",(req,res)=>{
     res.send("hi from 3000");
 });
 
-
 app.use('/user',userRoutes);
-app.use('/account',AccountRoutes)
-
+app.use('/account',AccountRoutes);
 
 app.listen(3000);
