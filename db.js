@@ -12,7 +12,10 @@ const userSchema=new mongoose.Schema({
     lastname:String
 })
 
+    
+
 const Accountschema=new mongoose.Schema({
+
     userId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
     balance:{type:Number,required:true}
 })

@@ -8,6 +8,7 @@ exports.getBalance=async(req,res)=>{
         userId:req.userId
     })
 
+
     if(account){
             res.status(200).json({
                 balance:account.balance
