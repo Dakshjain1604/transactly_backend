@@ -29,7 +29,7 @@ const PaymentHistory=new mongoose.Schema({
 
 const OtpSchema=new mongoose.Schema({
     userId:{type:mongoose.Types.ObjectId,ref:'user',required:true},
-    otp_code:{type:String,required:true},
+    otp_code:{type:String},
     expiresAt:{type:Date},
 })
 

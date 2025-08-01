@@ -7,7 +7,7 @@ exports.getBalance=async(req,res)=>{
     const account=await Account.findOne({
         userId:req.userId
     })
-    console.log(account);
+
     if(account){
             res.status(200).json({
                 balance:account.balance
@@ -67,7 +67,6 @@ exports.sendMoney=async(req,res)=>{
         timeStamp:new Date()
     }], { session });
 
-    console.log(his);
     await session.commitTransaction();
     res.json({
         message:"transfer sucessful"

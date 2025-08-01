@@ -35,7 +35,7 @@ exports.signupUser = async (req, res) => {
     firstname: req.body.firstname,
     lastname: req.body.lastname,
   });
-  console.log(createdUser)
+  
 
   const Userbalance = await Account.create({
     userId: createdUser._id,
@@ -56,7 +56,7 @@ const signinBody = zod.object({
 });
 exports.loginUser = async (req, res) => {
   const parsed = signinBody.safeParse(req.body);
-  console.log(parsed)
+  
   if (!parsed.success) {
     return res.status(411).json({
       message: "Incorrect inputs",
@@ -64,7 +64,7 @@ exports.loginUser = async (req, res) => {
   }
 
   const findUser = await user.findOne({ username: req.body.username });
-  console.log(findUser);
+
   if (!findUser) {
     return res.status(401).json({
       message: "User not found",
@@ -120,7 +120,7 @@ exports.updateUser = async (req, res) => {
 
 exports.findUser = async (req, res) => {
   const filter = req.query.filter || "";
-  console.log(filter)
+ 
   const users = await user.find({
     $or: [{
       firstname: {
@@ -147,7 +147,7 @@ exports.otpGen = async (req, res) => {
   const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
   const userId = req.userId;
 
-  console.log("User ID:", userId);
+
 
   try {
     const userr = await user.findById(userId);
@@ -160,7 +160,7 @@ exports.otpGen = async (req, res) => {
       return res.status(400).json({ message: "User email not found" });
     }
 
-    const transporter = nodemailer.createTransport({ 
+    const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.transporter_email,
@@ -174,34 +174,40 @@ exports.otpGen = async (req, res) => {
       subject: 'Your OTP',
       text: `Your OTP is: ${otp}`
     });
-    const existingOtp=await Otp.findOne({
-        userId:userId
-    })
-    if(existingOtp===null){
-      const createdOtp= await Otp.create({
-        userId:req.userId,
-        otp_code:otp,
-        expiresAt:Date.now()+ 5 * 60 * 1000
-      })
-      console.log(createdOtp)
+
+    const existingOtp = await Otp.findOne({
+      userId: userId
+    });
+
+    // Fix: Correct way to calculate expiry time
+    const expireTime = new Date(Date.now() + 5 * 60 * 1000);
+
+    if (!existingOtp) {
+      const createdOtp = await Otp.create({
+        userId: req.userId,
+        otp_code: otp,
+        expiresAt: expireTime
+      });
+      console.log(createdOtp);
       return res.json({
         message: "OTP sent successfully",
         createdOtp
       });
-    }else if(existingOtp!=null){
-      const UpdatedOtp=await Otp.updateOne({
-        userId:req.userId,
-        otp_code:otp,
-        expiresAt:Date.now()+ 5 * 60 * 1000
-      })
-      console.log(UpdatedOtp)
+    } else {
+      
+      const UpdatedOtp = await Otp.updateOne(
+        { userId: req.userId }, // filter criteria
+        { 
+          otp_code: otp, 
+          expiresAt: expireTime 
+        } 
+      );
+      console.log(UpdatedOtp);
       return res.json({
         message: "OTP sent successfully",
         UpdatedOtp
       });
-
     }
-    
 
   } catch (exception) {
     console.error("OTP Error:", exception);
@@ -213,35 +219,46 @@ exports.otpGen = async (req, res) => {
 };
 
 
-
-exports.verifyOtp= async (req, res) => {
+exports.verifyOtp = async (req, res) => {
   try {
-    const { otp } = req.body;
-    const userId = req.userId; // from token
+    const otp  = req.body.otp;
+    const userId = req.userId; 
 
-    const CurrentOtp = await Otp.findById({
-      userId:userId
+    
+    const CurrentOtp = await Otp.find({
+      userId: userId
     });
+    
 
-    if (!CurrentOtp.otp_code ) {
-      return res.status(400).json({ message: "OTP not sent" });
+    if (!CurrentOtp) {
+      return res.status(400).json({ message: "OTP not found" });
     }
 
-    await CurrentOtp.save()
+    // if (!CurrentOtp.otp_code) {
+    //   return res.status(400).json({ message: "OTP not sent" });
+    // }
+
+    
+    const now = new Date();
 
     if (now > CurrentOtp.expiresAt) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    if (otp !== CurrentOtp.otp_code) {
+    if (otp === CurrentOtp.otp_code) {
+      return res.status(200).json({ message: "OTP verified successfully" });
+    }
+    else{
       return res.status(400).json({ message: "Invalid OTP" });
     }
+    
+    // await CurrentOtp.save(); // Use CurrentOtp.save(), not Otp.save()
+    // // Clear OTP after successful verification
+    // CurrentOtp.set('otp_code', undefined, { strict: false });
+    // CurrentOtp.set('expiresAt', undefined, { strict: false });
+    
 
-    // Optional: Clear OTP after use
-    CurrentOtp.otp_code = undefined;
-    await Otp.save();
-
-    return res.status(200).json({ message: "OTP verified successfully" });
+    
 
   } catch (error) {
     console.error("Error verifying OTP:", error);
