@@ -3,7 +3,8 @@ const app=express();
 app.use(express.json());
 const cors=require('cors');
 require('dotenv').config();
-app.use(cors());
+
+app.use(cors({ origin: "*", credentials: true }));
 
 //importing the routes
 const userRoutes=require("./routes/userRoutes");
