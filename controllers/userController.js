@@ -16,12 +16,14 @@ const signupBody = zod.object({
 exports.signupUser = async (req, res) => {
   const parsed = signupBody.safeParse(req.body);
   if (!parsed.success) {
+
     return res.status(411).json({
       message: "Incorrect inputs",
     });
   }
 
   const existingUser = await user.findOne({ username: req.body.username });
+  console.log(existingUser)
   if (existingUser) {
     return res.status(411).json({
       message: "Email already taken",
