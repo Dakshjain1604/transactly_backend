@@ -10,7 +10,6 @@ app.use(cors({ origin: "*", credentials: true }));
 const userRoutes=require("./routes/userRoutes");
 const AccountRoutes=require("./routes/AccountRoutes");
 
-//calling the apis here
 app.get("/",(req,res)=>{
     res.send("hi from 3000");
 });
