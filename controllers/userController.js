@@ -6,6 +6,12 @@ const JWT_SECRET= process.env.JWT_SECRET;
 const zod = require("zod");
 const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
+const {createClient}=require('redis')
+
+
+const redisClient=createClient();
+redisClient.connect();
+
 
 const signupBody = zod.object({
   username: zod.string().email(),
@@ -21,7 +27,7 @@ exports.signupUser = async (req, res) => {
       message: "Incorrect inputs",
     });
   }
-
+  
   const existingUser = await user.findOne({ username: req.body.username });
   console.log(existingUser)
   if (existingUser) {
@@ -30,7 +36,7 @@ exports.signupUser = async (req, res) => {
     });
   }
 
-  const hashedPassword = await bcrypt.hash(req.body.password, 10);
+  const hashedPassword = await bcrypt.hash(req.body.password, 3);
   const createdUser = await user.create({
     username: req.body.username,
     password: hashedPassword,
@@ -56,37 +62,51 @@ const signinBody = zod.object({
   username: zod.string().email(),
   password: zod.string(),
 });
+
 exports.loginUser = async (req, res) => {
   const parsed = signinBody.safeParse(req.body);
-  
+
   if (!parsed.success) {
     return res.status(411).json({
       message: "Incorrect inputs",
     });
   }
 
-  const findUser = await user.findOne({ username: req.body.username });
+  try {
+    const { username, password } = req.body;
+    let findUser;
 
-  if (!findUser) {
-    return res.status(401).json({
-      message: "User not found",
-    });
-  }
+    // 1. Check cache first
+    const cachedUser = await redisClient.get(`user:${username}`);
+    if (cachedUser) {
+      findUser = JSON.parse(cachedUser);
+    } else {
+      // 2. Fetch from DB
+      findUser = await User.findOne({ username }); // assuming `User` is your Mongoose/Sequelize model
+      if (!findUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
 
-  const isPasswordCorrect = await bcrypt.compare(
-    req.body.password,
-    findUser.password
-  );
+      // 3. Cache it (expire after 5 min)
+      await redisClient.setEx(`user:${username}`, 300, JSON.stringify(findUser));
+    }
 
-  if (isPasswordCorrect) {
-    const token = jwt.sign({ id: findUser._id }, JWT_SECRET);
+    // 4. Validate password
+    const isPasswordCorrect = await bcrypt.compare(password, findUser.password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 5. Generate token
+    const token = jwt.sign({ id: findUser._id }, JWT_SECRET, { expiresIn: "1h" });
+
     return res.json({ token });
-  } else {
-    return res.status(411).json({
-      message: "Invalid password",
-    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 
