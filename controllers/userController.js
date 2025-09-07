@@ -29,7 +29,7 @@ exports.signupUser = async (req, res) => {
   }
   
   const existingUser = await user.findOne({ username: req.body.username });
-  console.log(existingUser)
+
   if (existingUser) {
     return res.status(411).json({
       message: "Email already taken",
@@ -210,7 +210,7 @@ exports.otpGen = async (req, res) => {
         otp_code: otp,
         expiresAt: expireTime
       });
-      console.log(createdOtp);
+      
       return res.json({
         message: "OTP sent successfully",
         createdOtp
@@ -224,7 +224,7 @@ exports.otpGen = async (req, res) => {
           expiresAt: expireTime 
         } 
       );
-      console.log(UpdatedOtp);
+      
       return res.json({
         message: "OTP sent successfully",
         UpdatedOtp
