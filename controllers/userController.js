@@ -82,7 +82,7 @@ exports.loginUser = async (req, res) => {
       findUser = JSON.parse(cachedUser);
     } else {
       // 2. Fetch from DB
-      findUser = await User.findOne({ username }); // assuming `User` is your Mongoose/Sequelize model
+      findUser = await user.findOne({ username }); // assuming `User` is your Mongoose/Sequelize model
       if (!findUser) {
         return res.status(401).json({ message: "User not found" });
       }
