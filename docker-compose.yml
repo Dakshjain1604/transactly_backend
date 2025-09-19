@@ -1,0 +1,24 @@
+
+services:
+  redis:
+    image: redis:7.2
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+
+  express:
+    build: .
+    container_name: backend-transactly
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  frontend:
+    build: ./frontend
+    container_name: frontend-transactly
+    ports:
+      - "8080:80"

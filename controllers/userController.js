@@ -6,11 +6,8 @@ const JWT_SECRET= process.env.JWT_SECRET;
 const zod = require("zod");
 const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
-const {createClient}=require('redis')
+const {redisClient} = require('../redisClient')
 
-
-const redisClient=createClient();
-redisClient.connect();
 
 
 const signupBody = zod.object({
