@@ -17,8 +17,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
-  frontend:
-    build: ./frontend
-    container_name: frontend-transactly
-    ports:
-      - "8080:80"
+  # frontend:
+  #   build: ./frontend
+  #   container_name: frontend-transactly
+  #   ports:
+  #     - "8080:80"

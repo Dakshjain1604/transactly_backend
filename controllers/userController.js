@@ -6,16 +6,15 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const zod = require("zod");
 const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
-const { redisClient } = require('../redisClient'); // Redis client
+const { redisClient } = require('../redisClient'); 
 
-// ------------------- SIGNUP -------------------
+// signup
 const signupBody = zod.object({
   username: zod.string().email(),
   firstname: zod.string(),
   lastname: zod.string(),
   password: zod.string(),
 });
-
 exports.signupUser = async (req, res) => {
   const parsed = signupBody.safeParse(req.body);
   if (!parsed.success) return res.status(411).json({ message: "Incorrect inputs" });
@@ -42,21 +41,18 @@ exports.signupUser = async (req, res) => {
   res.status(200).json({ message: "User created successfully" });
 };
 
-// ------------------- LOGIN -------------------
+// login  
 const signinBody = zod.object({
   username: zod.string().email(),
   password: zod.string(),
 });
-
 exports.loginUser = async (req, res) => {
   const parsed = signinBody.safeParse(req.body);
   if (!parsed.success) return res.status(411).json({ message: "Incorrect inputs" });
-
   try {
     const { username, password } = req.body;
     let findUser;
 
-    // Check Redis cache first
     const cachedUser = await redisClient.get(`user:${username}`);
     if (cachedUser) {
       findUser = JSON.parse(cachedUser);
