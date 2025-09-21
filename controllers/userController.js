@@ -1,37 +1,27 @@
-const { user, Account,Otp } = require("../db");
+const { user, Account, Otp } = require("../db");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 require('dotenv').config();
-const JWT_SECRET= process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
 const zod = require("zod");
 const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
-const {redisClient} = require('../redisClient')
+const { redisClient } = require('../redisClient'); // Redis client
 
-
-
+// ------------------- SIGNUP -------------------
 const signupBody = zod.object({
   username: zod.string().email(),
   firstname: zod.string(),
   lastname: zod.string(),
   password: zod.string(),
 });
+
 exports.signupUser = async (req, res) => {
   const parsed = signupBody.safeParse(req.body);
-  if (!parsed.success) {
+  if (!parsed.success) return res.status(411).json({ message: "Incorrect inputs" });
 
-    return res.status(411).json({
-      message: "Incorrect inputs",
-    });
-  }
-  
   const existingUser = await user.findOne({ username: req.body.username });
-
-  if (existingUser) {
-    return res.status(411).json({
-      message: "Email already taken",
-    });
-  }
+  if (existingUser) return res.status(411).json({ message: "Email already taken" });
 
   const hashedPassword = await bcrypt.hash(req.body.password, 3);
   const createdUser = await user.create({
@@ -40,21 +30,19 @@ exports.signupUser = async (req, res) => {
     firstname: req.body.firstname,
     lastname: req.body.lastname,
   });
-  
 
-  const Userbalance = await Account.create({
+  await Account.create({
     userId: createdUser._id,
     balance: 1 + Math.random() * 10000
-  })
-
-  res.status(200).json({
-    message: "User created successfully",
   });
 
+  // Cache new user
+  await redisClient.setEx(`user:${createdUser.username}`, 300, JSON.stringify(createdUser));
+
+  res.status(200).json({ message: "User created successfully" });
 };
 
-
-
+// ------------------- LOGIN -------------------
 const signinBody = zod.object({
   username: zod.string().email(),
   password: zod.string(),
@@ -62,51 +50,36 @@ const signinBody = zod.object({
 
 exports.loginUser = async (req, res) => {
   const parsed = signinBody.safeParse(req.body);
-
-  if (!parsed.success) {
-    return res.status(411).json({
-      message: "Incorrect inputs",
-    });
-  }
+  if (!parsed.success) return res.status(411).json({ message: "Incorrect inputs" });
 
   try {
     const { username, password } = req.body;
     let findUser;
 
-    // 1. Check cache first
+    // Check Redis cache first
     const cachedUser = await redisClient.get(`user:${username}`);
     if (cachedUser) {
       findUser = JSON.parse(cachedUser);
     } else {
-      // 2. Fetch from DB
-      findUser = await user.findOne({ username }); // assuming `User` is your Mongoose/Sequelize model
-      if (!findUser) {
-        return res.status(401).json({ message: "User not found" });
-      }
+      findUser = await user.findOne({ username });
+      if (!findUser) return res.status(401).json({ message: "User not found" });
 
-      // 3. Cache it (expire after 5 min)
       await redisClient.setEx(`user:${username}`, 300, JSON.stringify(findUser));
     }
 
-    // 4. Validate password
     const isPasswordCorrect = await bcrypt.compare(password, findUser.password);
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
-    // 5. Generate token
     const token = jwt.sign({ id: findUser._id }, JWT_SECRET, { expiresIn: "1h" });
-
     return res.json({ token });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-
-
-
+// ------------------- UPDATE USER -------------------
 const updateBody = zod.object({
   password: zod.string().optional(),
   firstname: zod.string().optional(),
@@ -115,76 +88,67 @@ const updateBody = zod.object({
 
 exports.updateUser = async (req, res) => {
   const { success } = updateBody.safeParse(req.body);
-  if (!success) {
-    return res.status(411).json({
-      message: "invalid input"
-    });
-  }
+  if (!success) return res.status(411).json({ message: "invalid input" });
+
   try {
     const updateData = { ...req.body };
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
+    if (updateData.password) updateData.password = await bcrypt.hash(updateData.password, 10);
+
     await user.updateOne({ _id: req.userId }, updateData);
-    res.status(200).json({
-      message: "Updated successfully"
-    });
+
+    // Update Redis cache
+    const updatedUser = await user.findById(req.userId);
+    await redisClient.setEx(`user:${updatedUser.username}`, 300, JSON.stringify(updatedUser));
+
+    res.status(200).json({ message: "Updated successfully" });
   } catch (err) {
-    res.status(500).json({
-      message: "Server error during update",
-      error: err.message
-    });
+    res.status(500).json({ message: "Server error during update", error: err.message });
   }
 };
 
+// ------------------- FIND USER -------------------
 exports.findUser = async (req, res) => {
   const filter = req.query.filter || "";
- 
+
+  // Check Redis cache first
+  const cachedUsers = await redisClient.get(`findUser:${filter}`);
+  if (cachedUsers) {
+    return res.json({ users: JSON.parse(cachedUsers) });
+  }
+
   const users = await user.find({
-    $or: [{
-      firstname: {
-        "$regex": filter,$options: "i" 
-      }
-    }, {
-      lastname: {
-        "$regex": filter,$options: "i" 
-      }
-    }]
-  })
-  res.json({
-    users: users.map(user => ({
-      username: user.username,
-      firstName: user.firstname,
-      lastName: user.lastname,
-      _id: user._id
-  }))
-  })
-}
+    $or: [
+      { firstname: { "$regex": filter, $options: "i" } },
+      { lastname: { "$regex": filter, $options: "i" } }
+    ]
+  });
 
+  const result = users.map(u => ({
+    username: u.username,
+    firstName: u.firstname,
+    lastName: u.lastname,
+    _id: u._id
+  }));
 
+  // Cache result for 30 seconds
+  await redisClient.setEx(`findUser:${filter}`, 30, JSON.stringify(result));
+
+  res.json({ users: result });
+};
+
+// ------------------- OTP -------------------
 exports.otpGen = async (req, res) => {
   const otp = otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false });
   const userId = req.userId;
 
-
-
   try {
     const userr = await user.findById(userId);
-
-    if (!userr) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    if (!userr.username) {
-      return res.status(400).json({ message: "User email not found" });
-    }
+    if (!userr) return res.status(404).json({ message: "User not found" });
+    if (!userr.username) return res.status(400).json({ message: "User email not found" });
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        user: process.env.transporter_email,
-        pass: process.env.transporter_pass
-      }
+      auth: { user: process.env.transporter_email, pass: process.env.transporter_pass }
     });
 
     await transporter.sendMail({
@@ -194,90 +158,42 @@ exports.otpGen = async (req, res) => {
       text: `Your OTP is: ${otp}`
     });
 
-    const existingOtp = await Otp.findOne({
-      userId: userId
-    });
-
-    // Fix: Correct way to calculate expiry time
     const expireTime = new Date(Date.now() + 5 * 60 * 1000);
+    const existingOtp = await Otp.findOne({ userId });
+
+    // Store OTP in Redis with 5 min expiry
+    await redisClient.setEx(`otp:${userId}`, 300, otp);
 
     if (!existingOtp) {
-      const createdOtp = await Otp.create({
-        userId: req.userId,
-        otp_code: otp,
-        expiresAt: expireTime
-      });
-      
-      return res.json({
-        message: "OTP sent successfully",
-        createdOtp
-      });
+      await Otp.create({ userId, otp_code: otp, expiresAt: expireTime });
     } else {
-      
-      const UpdatedOtp = await Otp.updateOne(
-        { userId: req.userId }, // filter criteria
-        { 
-          otp_code: otp, 
-          expiresAt: expireTime 
-        } 
-      );
-      
-      return res.json({
-        message: "OTP sent successfully",
-        UpdatedOtp
-      });
+      await Otp.updateOne({ userId }, { otp_code: otp, expiresAt: expireTime });
     }
+
+    res.json({ message: "OTP sent successfully" });
 
   } catch (exception) {
     console.error("OTP Error:", exception);
-    res.status(500).json({
-      message: "Error sending OTP",
-      error: exception.message
-    });
+    res.status(500).json({ message: "Error sending OTP", error: exception.message });
   }
 };
 
-
 exports.verifyOtp = async (req, res) => {
   try {
-    const otp  = req.body.otp;
-    const userId = req.userId; 
+    const otp = req.body.otp;
+    const userId = req.userId;
 
-    
-    const CurrentOtp = await Otp.find({
-      userId: userId
-    });
-    
+    // Check Redis first
+    const cachedOtp = await redisClient.get(`otp:${userId}`);
+    if (!cachedOtp) return res.status(400).json({ message: "OTP not found" });
 
-    if (!CurrentOtp) {
-      return res.status(400).json({ message: "OTP not found" });
-    }
-
-    // if (!CurrentOtp.otp_code) {
-    //   return res.status(400).json({ message: "OTP not sent" });
-    // }
-
-    
-    const now = new Date();
-
-    if (now > CurrentOtp.expiresAt) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    if (otp === CurrentOtp.otp_code) {
+    if (otp === cachedOtp) {
+      // Optionally delete OTP after verification
+      await redisClient.del(`otp:${userId}`);
       return res.status(200).json({ message: "OTP verified successfully" });
-    }
-    else{
+    } else {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-    
-    // await CurrentOtp.save(); // Use CurrentOtp.save(), not Otp.save()
-    // // Clear OTP after successful verification
-    // CurrentOtp.set('otp_code', undefined, { strict: false });
-    // CurrentOtp.set('expiresAt', undefined, { strict: false });
-    
-
-    
 
   } catch (error) {
     console.error("Error verifying OTP:", error);
